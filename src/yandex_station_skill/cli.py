@@ -435,6 +435,18 @@ def play(
     _action(device, f"включи {query}", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
 
 
+@app.command()
+def like(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Like current track (Alice command)."""
+    _action(device, "лайк", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
 def _status(
     device: str | None,
     cookie: str | None,
