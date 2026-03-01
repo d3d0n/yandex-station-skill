@@ -35,13 +35,38 @@ class AppConfig:
     # Prefer local control (Glagol WS) when discoverable; fallback to cloud.
     prefer_local: bool = True
 
+    # Manual local endpoint override (useful when mDNS discovery doesn't work,
+    # e.g. inside WSL).
+    #
+    # If set, local mode will try this host/port when the station isn't found
+    # via mDNS.
+    local_host: str | None = None
+    local_port: int | None = None
+
+    # Optional manual identifiers for Glagol token request.
+    # Normally we read these from Quasar device configuration or from mDNS.
+    local_device_id: str | None = None
+    local_platform: str | None = None
+
+
+_ALLOWED_KEYS = {
+    "max_volume",
+    "default_device",
+    "prefer_local",
+    "local_host",
+    "local_port",
+    "local_device_id",
+    "local_platform",
+}
+
 
 def load_config() -> AppConfig:
     p = paths()
     try:
         data = json.loads(p.config_file.read_text(encoding="utf-8"))
-        allowed = {"max_volume", "default_device", "prefer_local"}
-        payload = {k: v for k, v in data.items() if k in allowed}
+        if not isinstance(data, dict):
+            return AppConfig()
+        payload = {k: v for k, v in data.items() if k in _ALLOWED_KEYS}
         return AppConfig(**payload)
     except FileNotFoundError:
         return AppConfig()

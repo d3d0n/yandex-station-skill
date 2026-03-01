@@ -1,6 +1,9 @@
 # yandex-station-skill
 
-Control Yandex Station playback (v1). First implementation uses **cloud control** via Quasar scenarios (text commands).
+Control Yandex Station.
+
+- **Cloud mode** (fallback): Quasar scenarios (text actions)
+- **Local mode** (preferred when available): Glagol WebSocket on LAN
 
 ## Quick start (dev)
 
@@ -12,7 +15,7 @@ Control Yandex Station playback (v1). First implementation uses **cloud control*
 uv run yandex-station-skill auth qr-url
 ```
 
-2) Open the printed URL on your phone (scan it or just open) and confirm login in Yandex app.
+2) Open the printed URL on your phone and confirm login in Yandex app.
 
 3) Complete and save cookies
 
@@ -33,22 +36,57 @@ uv run yandex-station-skill auth qr-complete
 uv run yandex-station-skill setup-cookie "yandexuid=...; Session_id=...; ..."
 ```
 
-3) List devices
+## Pick a default device
 
 ```bash
 uv run yandex-station-skill list
+uv run yandex-station-skill config set-default-device "Kitchen"
 ```
 
-4) Control
+## Control
 
 ```bash
-uv run yandex-station-skill pause "Kitchen"
-uv run yandex-station-skill volume "Kitchen" 25
-uv run yandex-station-skill next "Kitchen"
-uv run yandex-station-skill play "Kitchen" "my music"
+uv run yandex-station-skill pause
+uv run yandex-station-skill resume
+uv run yandex-station-skill next
+uv run yandex-station-skill prev
+uv run yandex-station-skill volume 25
+uv run yandex-station-skill play "lofi"
 ```
 
-### Volume safety cap
+## Local mode notes
+
+Local mode tries to discover stations via mDNS: `_yandexio._tcp.local.`.
+
+### Check mDNS discovery
+
+```bash
+uv run yandex-station-skill local
+```
+
+### WSL / broken mDNS
+
+If discovery doesn't work (common in WSL), set a manual endpoint (IP/port):
+
+```bash
+uv run yandex-station-skill config set-local-endpoint 192.168.1.50 1961
+```
+
+You can also override per-command:
+
+```bash
+uv run yandex-station-skill pause --local-host 192.168.1.50 --local-port 1961
+```
+
+### Status
+
+Best-effort `getState` (local first):
+
+```bash
+uv run yandex-station-skill status
+```
+
+## Volume safety cap
 
 Default max volume is stored in `~/.config/yandex-station-skill/config.json`.
 
@@ -56,8 +94,3 @@ Default max volume is stored in `~/.config/yandex-station-skill/config.json`.
 uv run yandex-station-skill config show
 uv run yandex-station-skill config set-max-volume 70
 ```
-
-## Notes
-
-- This v1 is **cloud** only (works even if station isn't discoverable on LAN).
-- Local LAN (Glagol WebSocket) will be added next.

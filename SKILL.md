@@ -69,4 +69,6 @@ when user says “не выше 30%” for the session, respect it even if confi
 
 - local mode not available:
   - the tool falls back to cloud automatically
-  - local discovery uses mDNS; in WSL it may not work. don’t block on it.
+  - local discovery uses mDNS; in WSL it may not work
+  - workaround: set manual endpoint:
+    - `cd {baseDir} && uv run yandex-station-skill config set-local-endpoint <ip> 1961`
