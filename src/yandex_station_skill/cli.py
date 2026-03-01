@@ -8,10 +8,13 @@ from typing import Optional
 import typer
 
 from .config import paths
+from .passport_auth import PassportAuth, load_qr_state, qr_url, save_qr_state
 from .quasar import Quasar
 from .session import AuthError, YandexSession
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
+auth_app = typer.Typer(add_completion=False, no_args_is_help=True)
+app.add_typer(auth_app, name="auth")
 
 
 def _load_cookie(cookie: Optional[str]) -> str:
@@ -69,6 +72,54 @@ def setup_cookie(cookie: str = typer.Argument(..., help="Raw Cookie header value
     p.config_dir.mkdir(parents=True, exist_ok=True)
     p.cookie_file.write_text(cookie.strip(), encoding="utf-8")
     typer.echo(str(p.cookie_file))
+
+
+@auth_app.command("qr-url")
+def auth_qr_url():
+    """Start QR auth and print URL to scan."""
+
+    async def run():
+        auth = PassportAuth()
+        try:
+            state = await auth.qr_begin()
+            save_qr_state(state)
+            typer.echo(qr_url(state))
+        finally:
+            await auth.aclose()
+
+    asyncio.run(run())
+
+
+@auth_app.command("qr-complete")
+def auth_qr_complete(timeout_s: int = typer.Option(180, help="How long to wait for scan confirmation")):
+    """Poll QR auth status; on success save cookies to cookie.txt."""
+
+    async def run():
+        auth = PassportAuth()
+        try:
+            state = load_qr_state()
+            # poll
+            import time as _t
+
+            deadline = _t.time() + timeout_s
+            while _t.time() < deadline:
+                ok = await auth.qr_poll(state)
+                if ok:
+                    await auth.ensure_quasar_cookie()
+                    cookie = auth.export_cookie_header(".yandex.ru")
+                    # save
+                    p = paths()
+                    p.config_dir.mkdir(parents=True, exist_ok=True)
+                    p.cookie_file.write_text(cookie, encoding="utf-8")
+                    typer.echo("ok")
+                    typer.echo(str(p.cookie_file))
+                    return
+                await asyncio.sleep(2.0)
+            raise TimeoutError("QR auth timed out")
+        finally:
+            await auth.aclose()
+
+    asyncio.run(run())
 
 
 @app.command()

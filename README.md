@@ -4,6 +4,24 @@ Control Yandex Station playback (v1). First implementation uses **cloud control*
 
 ## Quick start (dev)
 
+### Option A (recommended): QR login (no cookie copying)
+
+1) Generate QR URL
+
+```bash
+uv run yandex-station-skill auth qr-url
+```
+
+2) Open the printed URL on your phone (scan it or just open) and confirm login in Yandex app.
+
+3) Complete and save cookies
+
+```bash
+uv run yandex-station-skill auth qr-complete
+```
+
+### Option B: manual cookies
+
 1) Get Yandex cookies from a logged-in browser session
 - open `https://yandex.ru/quasar`
 - DevTools → Application/Storage → Cookies → copy cookies for `yandex.ru`
