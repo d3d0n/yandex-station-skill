@@ -131,10 +131,22 @@ def list(cookie: str = typer.Option(None, help="Cookie string (or set YANDEX_COO
         async for q in _with_quasar(cookie):
             devices = await q.list_devices_raw()
             # show speakers first
-            devices_sorted = sorted(devices, key=lambda d: (0 if d.get("capabilities") else 1, d.get("house_name",""), d.get("name","")))
+            devices_sorted = sorted(
+                devices,
+                key=lambda d: (
+                    0 if d.get("capabilities") else 1,
+                    d.get("house_name", ""),
+                    d.get("name", ""),
+                ),
+            )
             for d in devices_sorted:
                 caps = "caps" if d.get("capabilities") else "-"
-                typer.echo(f"{d.get('name')}\t{d.get('id')}\t{d.get('house_name','')}\t{caps}")
+                dtype = d.get("type") or "?"
+                item_type = d.get("item_type") or "?"
+                room = d.get("room_name") or ""
+                typer.echo(
+                    f"{d.get('name')}\t{d.get('id')}\t{d.get('house_name','')}\t{room}\t{item_type}\t{dtype}\t{caps}"
+                )
 
     try:
         asyncio.run(run())
