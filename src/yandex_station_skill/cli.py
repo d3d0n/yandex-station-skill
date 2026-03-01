@@ -447,6 +447,114 @@ def like(
     _action(device, "лайк", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
 
 
+@app.command()
+def dislike(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Dislike current track (Alice command)."""
+    _action(device, "не нравится", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command()
+def stop(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Stop playback."""
+    _action(device, "стоп", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command()
+def louder(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Volume up a bit."""
+    _action(device, "громче", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command()
+def quieter(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Volume down a bit."""
+    _action(device, "тише", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command("shuffle-on")
+def shuffle_on(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Enable shuffle."""
+    _action(device, "включи перемешивание", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command("shuffle-off")
+def shuffle_off(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Disable shuffle."""
+    _action(device, "выключи перемешивание", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command("repeat-on")
+def repeat_on(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Enable repeat."""
+    _action(device, "включи повтор", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command("repeat-off")
+def repeat_off(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+    local_host: str | None = typer.Option(None, help="Manual local station host/IP (bypass mDNS; overrides config.local_host)"),
+    local_port: int | None = typer.Option(None, help="Manual local station port (bypass mDNS; overrides config.local_port)"),
+):
+    """Disable repeat."""
+    _action(device, "выключи повтор", cookie, prefer_local=prefer_local, local_host=local_host, local_port=local_port)
+
+
+@app.command()
+def cmd(
+    text: str = typer.Argument(..., help="Raw Alice command text (sent as text_action)") ,
+    device: str | None = typer.Option(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None, help="Prefer local; note: arbitrary cmd likely uses cloud"),
+):
+    """Send raw command text to station (cloud)."""
+    # force cloud for arbitrary commands
+    _action(device, text, cookie, prefer_local=False)
+
+
 def _status(
     device: str | None,
     cookie: str | None,
