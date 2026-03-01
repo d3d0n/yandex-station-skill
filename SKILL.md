@@ -13,9 +13,12 @@ this skill is for **end-user voice/chat control** of Yandex Station.
 user says stuff like:
 - “братан, поставь музыку на паузу”
 - “включи обратно”
-- “следующий трек”
-- “громкость 20%”
+- “следующий трек / прошлый трек”
+- “громкость 20% / громче / тише”
 - “включи lofi”
+- “лайк / не нравится”
+- “перемешай / повтор”
+- “стоп”
 
 **your job:** do the action with minimal questions.
 
@@ -45,10 +48,14 @@ if user asks for playback control and auth is missing:
 ## normal operation
 
 prefer **no-device commands** once default is set:
-- pause: `cd {baseDir} && uv run yandex-station-skill pause`
-- resume: `cd {baseDir} && uv run yandex-station-skill resume`
+- pause/resume: `... pause` / `... resume`
 - next/prev: `... next` / `... prev`
+- like/dislike: `... like` / `... dislike`
+- stop: `... stop`
+- louder/quieter: `... louder` / `... quieter`
+- shuffle/repeat: `... shuffle-on` / `... shuffle-off` / `... repeat-on` / `... repeat-off`
 - play: `cd {baseDir} && uv run yandex-station-skill play "<query>"`
+- raw command: `cd {baseDir} && uv run yandex-station-skill cmd "<alice text>"`
 
 if user specifies a device name, pass it:
 - `... pause "kitchen"`
