@@ -74,6 +74,8 @@ def config_show():
     p = paths()
     typer.echo(f"config: {p.config_file}")
     typer.echo(f"max_volume: {cfg.max_volume}")
+    typer.echo(f"default_device: {cfg.default_device}")
+    typer.echo(f"prefer_local: {cfg.prefer_local}")
 
 
 @config_app.command("set-max-volume")
@@ -85,6 +87,34 @@ def config_set_max_volume(level: int = typer.Argument(..., help="Default max vol
     cfg.max_volume = level
     path = save_config(cfg)
     typer.echo(f"ok: max_volume={level}")
+    typer.echo(str(path))
+
+
+@config_app.command("set-default-device")
+def config_set_default_device(needle: str = typer.Argument(..., help="Device name substring or id")):
+    """Set default device used when device arg omitted."""
+    cfg = load_config()
+    cfg.default_device = needle.strip()
+    path = save_config(cfg)
+    typer.echo(f"ok: default_device={cfg.default_device}")
+    typer.echo(str(path))
+
+
+@config_app.command("clear-default-device")
+def config_clear_default_device():
+    cfg = load_config()
+    cfg.default_device = None
+    path = save_config(cfg)
+    typer.echo("ok: default_device cleared")
+    typer.echo(str(path))
+
+
+@config_app.command("set-prefer-local")
+def config_set_prefer_local(v: bool = typer.Argument(..., help="true/false")):
+    cfg = load_config()
+    cfg.prefer_local = bool(v)
+    path = save_config(cfg)
+    typer.echo(f"ok: prefer_local={cfg.prefer_local}")
     typer.echo(str(path))
 
 
@@ -107,6 +137,40 @@ def auth_qr_url():
             state = await auth.qr_begin()
             save_qr_state(state)
             typer.echo(qr_url(state))
+        finally:
+            await auth.aclose()
+
+    asyncio.run(run())
+
+
+@auth_app.command("qr-png")
+def auth_qr_png():
+    """Start QR auth and write a nice QR PNG to ~/.config/yandex-station-skill/qr.png"""
+    from .config import paths
+    import qrcode
+
+    async def run():
+        auth = PassportAuth()
+        try:
+            state = await auth.qr_begin()
+            save_qr_state(state)
+            url = qr_url(state)
+
+            qr = qrcode.QRCode(
+                version=None,
+                error_correction=qrcode.constants.ERROR_CORRECT_M,
+                box_size=12,
+                border=3,
+            )
+            qr.add_data(url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            p = paths()
+            p.config_dir.mkdir(parents=True, exist_ok=True)
+            img.save(p.qr_file)
+            typer.echo(str(p.qr_file))
+            typer.echo(url)
         finally:
             await auth.aclose()
 
@@ -191,36 +255,52 @@ def local(cookie: str = typer.Option(None)):
 
 
 @app.command()
-def pause(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True, help="Try local Glagol first when possible")):
+def pause(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None, help="Override prefer_local (default from config)"),
+):
     """Pause on a station."""
     _action(device, "пауза", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def resume(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True, help="Try local Glagol first when possible")):
+def resume(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None, help="Override prefer_local (default from config)"),
+):
     """Resume on a station."""
     _action(device, "продолжить", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def next(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+def next(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+):
     """Next track."""
     _action(device, "следующий трек", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def prev(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+def prev(
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+):
     """Previous track."""
     _action(device, "прошлый трек", cookie, prefer_local=prefer_local)
 
 
 @app.command()
 def volume(
-    device: str,
-    level: int,
+    device: str | None = typer.Argument(None, help="Device name/id (optional if default_device set)"),
+    level: int = typer.Argument(...),
     cookie: str = typer.Option(None),
-    prefer_local: bool = typer.Option(True),
-    max_level: int | None = typer.Option(None, help="Safety cap override (default from config)") ,
+    prefer_local: bool | None = typer.Option(None),
+    max_level: int | None = typer.Option(None, help="Safety cap override (default from config)"),
 ):
     """Set volume 0..100 (capped by max_level, default from config.json)."""
     if level < 0 or level > 100:
@@ -238,23 +318,43 @@ def volume(
 
 
 @app.command()
-def play(device: str, query: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+def play(
+    query: str,
+    device: str | None = typer.Option(None, help="Device name/id (optional if default_device set)"),
+    cookie: str = typer.Option(None),
+    prefer_local: bool | None = typer.Option(None),
+):
     """Play query on station (best-effort)."""
     _action(device, f"включи {query}", cookie, prefer_local=prefer_local)
 
 
-def _action(device: str, text: str, cookie: str | None, *, prefer_local: bool = True):
+def _action(device: str | None, text: str, cookie: str | None, *, prefer_local: bool | None = None):
     cookie = _load_cookie(cookie)
 
     async def run():
+        cfg0 = load_config()
+        if prefer_local is None:
+            prefer_local_eff = bool(cfg0.prefer_local)
+        else:
+            prefer_local_eff = bool(prefer_local)
+
         async for q in _with_quasar(cookie):
             devices = await q.list_devices_raw()
-            d = _match_device(devices, device)
+
+            needle = device
+            if needle is None:
+                needle = cfg0.default_device
+            if not needle:
+                raise typer.BadParameter(
+                    "no device specified and no default_device set. run: yandex-station-skill config set-default-device <name>"
+                )
+
+            d = _match_device(devices, needle)
 
             did = str(d["id"])
             name = d.get("name")
 
-            if prefer_local:
+            if prefer_local_eff:
                 # try local glagol if we can discover device and get tokens
                 try:
                     from .discovery import discover_local_speakers
