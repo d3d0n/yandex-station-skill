@@ -192,10 +192,18 @@ def prev(device: str, cookie: str = typer.Option(None), prefer_local: bool = typ
 
 
 @app.command()
-def volume(device: str, level: int, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
-    """Set volume 0..100."""
+def volume(
+    device: str,
+    level: int,
+    cookie: str = typer.Option(None),
+    prefer_local: bool = typer.Option(True),
+    max_level: int = typer.Option(30, help="Safety cap; default 30"),
+):
+    """Set volume 0..100 (capped by max_level)."""
     if level < 0 or level > 100:
         raise typer.BadParameter("level must be 0..100")
+    if level > max_level:
+        raise typer.BadParameter(f"level must be <= {max_level}")
     _action(device, f"громкость на {level}", cookie, prefer_local=prefer_local)
 
 
