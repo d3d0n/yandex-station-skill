@@ -1,0 +1,13 @@
+{
+  "name": "yandex-station-skill",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "node -c scripts/index.mjs",
+    "dev": "node scripts/index.mjs",
+    "test": "node -e \"console.log('todo')\""
+  },
+  "dependencies": {
+  }
+}
