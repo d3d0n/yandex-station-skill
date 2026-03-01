@@ -1,0 +1,20 @@
+[project]
+name = "yandex-station-skill"
+version = "0.1.0"
+description = "OpenClaw skill: control Yandex Station playback (v1 cloud via Quasar scenarios)"
+readme = "README.md"
+authors = [
+    { name = "d3d0n", email = "d3d0n@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "typer>=0.16.0",
+]
+
+[project.scripts]
+yandex-station-skill = "yandex_station_skill:main"
+
+[build-system]
+requires = ["uv_build>=0.10.7,<0.11.0"]
+build-backend = "uv_build"
