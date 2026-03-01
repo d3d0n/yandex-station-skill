@@ -145,9 +145,13 @@ def auth_qr_url():
 
 @auth_app.command("qr-png")
 def auth_qr_png():
-    """Start QR auth and write a nice QR PNG to ~/.config/yandex-station-skill/qr.png"""
+    """Start QR auth and write the *real login QR* PNG to ~/.config/yandex-station-skill/qr.png
+
+    Important: This PNG contains the same QR the passport page shows, so scanning it
+    doesn't lead to a second QR.
+    """
     from .config import paths
-    import qrcode
+    from .qr_render import render_magic_qr_png
 
     async def run():
         auth = PassportAuth()
@@ -156,19 +160,9 @@ def auth_qr_png():
             save_qr_state(state)
             url = qr_url(state)
 
-            qr = qrcode.QRCode(
-                version=None,
-                error_correction=qrcode.constants.ERROR_CORRECT_M,
-                box_size=12,
-                border=3,
-            )
-            qr.add_data(url)
-            qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
-
             p = paths()
-            p.config_dir.mkdir(parents=True, exist_ok=True)
-            img.save(p.qr_file)
+            await render_magic_qr_png(url, p.qr_file)
+
             typer.echo(str(p.qr_file))
             typer.echo(url)
         finally:

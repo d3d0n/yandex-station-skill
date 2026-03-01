@@ -23,13 +23,13 @@ user says stuff like:
 
 if user asks for playback control and auth is missing:
 
-1) generate a **nice QR** and send it immediately
+1) generate a **login QR PNG** and send it immediately
    - run: `cd {baseDir} && uv run yandex-station-skill auth qr-png`
    - the command prints:
-     - line 1: path to png (`~/.config/yandex-station-skill/qr.png`)
-     - line 2: the login url (keep it as fallback)
+     - line 1: path to png (`~/.config/yandex-station-skill/qr.png`) — this PNG is the *real* QR shown by passport
+     - line 2: the login url (fallback)
    - send the PNG to the user (attachment) with a short caption:
-     - “отскань/открой, подтверди в приложении Яндекс. потом напиши «готово».”
+     - “отскань в приложении Яндекс и подтверди вход. потом напиши «готово».”
 
 2) wait for user “готово”, then complete login:
    - `cd {baseDir} && uv run yandex-station-skill auth qr-complete --timeout-s 240`
