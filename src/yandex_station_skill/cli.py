@@ -143,57 +143,117 @@ def list(cookie: str = typer.Option(None, help="Cookie string (or set YANDEX_COO
 
 
 @app.command()
-def pause(device: str, cookie: str = typer.Option(None)):
-    """Pause on a station (cloud text command)."""
-    _action(device, "пауза", cookie)
+def local(cookie: str = typer.Option(None)):
+    """List local speakers discovered via mDNS (_yandexio._tcp.local.)."""
+    from .discovery import discover_local_speakers
+
+    speakers = discover_local_speakers(time_s=2.0)
+    if not speakers:
+        typer.echo("no local speakers discovered (mDNS).")
+        raise typer.Exit(code=3)
+    for s in speakers:
+        typer.echo(f"{s.device_id}\t{s.platform}\t{s.host}:{s.port}")
 
 
 @app.command()
-def resume(device: str, cookie: str = typer.Option(None)):
-    """Resume on a station (cloud text command)."""
-    _action(device, "продолжить", cookie)
+def pause(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True, help="Try local Glagol first when possible")):
+    """Pause on a station."""
+    _action(device, "пауза", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def next(device: str, cookie: str = typer.Option(None)):
-    """Next track (cloud text command)."""
-    _action(device, "следующий трек", cookie)
+def resume(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True, help="Try local Glagol first when possible")):
+    """Resume on a station."""
+    _action(device, "продолжить", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def prev(device: str, cookie: str = typer.Option(None)):
-    """Previous track (cloud text command)."""
-    _action(device, "прошлый трек", cookie)
+def next(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+    """Next track."""
+    _action(device, "следующий трек", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def volume(device: str, level: int, cookie: str = typer.Option(None)):
-    """Set volume 0..100 (cloud text command)."""
+def prev(device: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+    """Previous track."""
+    _action(device, "прошлый трек", cookie, prefer_local=prefer_local)
+
+
+@app.command()
+def volume(device: str, level: int, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+    """Set volume 0..100."""
     if level < 0 or level > 100:
         raise typer.BadParameter("level must be 0..100")
-    _action(device, f"громкость на {level}", cookie)
+    _action(device, f"громкость на {level}", cookie, prefer_local=prefer_local)
 
 
 @app.command()
-def play(device: str, query: str, cookie: str = typer.Option(None)):
-    """Play query on station (best-effort, cloud text command)."""
-    _action(device, f"включи {query}", cookie)
+def play(device: str, query: str, cookie: str = typer.Option(None), prefer_local: bool = typer.Option(True)):
+    """Play query on station (best-effort)."""
+    _action(device, f"включи {query}", cookie, prefer_local=prefer_local)
 
 
-def _action(device: str, text: str, cookie: str | None):
+def _action(device: str, text: str, cookie: str | None, *, prefer_local: bool = True):
     cookie = _load_cookie(cookie)
 
     async def run():
         async for q in _with_quasar(cookie):
             devices = await q.list_devices_raw()
             d = _match_device(devices, device)
-            scenario_map = await q.ensure_speaker_scenarios(devices)
+
             did = str(d["id"])
+            name = d.get("name")
+
+            if prefer_local:
+                # try local glagol if we can discover device and get tokens
+                try:
+                    from .discovery import discover_local_speakers
+                    from .glagol import GlagolClient, get_conversation_token
+                    from .tokens import get_tokens
+
+                    locals_ = {s.device_id: s for s in discover_local_speakers(time_s=2.0)}
+                    # we need quasar's device_id/platform mapping
+                    cfg = await q.session.get(f"https://iot.quasar.yandex.ru/m/user/devices/{did}/configuration")
+                    quasar_info = cfg.get("quasar_info") or {}
+                    local_id = quasar_info.get("device_id")
+                    platform = quasar_info.get("platform")
+
+                    if local_id and platform and str(local_id) in locals_:
+                        sp = locals_[str(local_id)]
+                        tokens = await get_tokens(cookie)
+                        conv = await get_conversation_token(device_id=str(local_id), platform=str(platform), music_token=tokens.music_token)
+
+                        # map text to local commands where possible
+                        cmd_map = {
+                            "пауза": {"command": "stop"},
+                            "продолжить": {"command": "play"},
+                            "следующий трек": {"command": "next"},
+                            "прошлый трек": {"command": "prev"},
+                        }
+                        if text.startswith("громкость на "):
+                            try:
+                                v = float(text.split()[-1])
+                                payload = {"command": "setVolume", "volume": round(v, 1)}
+                            except Exception:
+                                payload = None
+                        else:
+                            payload = cmd_map.get(text)
+
+                        if payload:
+                            g = GlagolClient(host=sp.host, port=sp.port, conversation_token=conv)
+                            resp = await g.send(payload)
+                            typer.echo(f"ok(local): {name} ({did}) <= {payload} :: {resp.get('payload', resp)}")
+                            return
+                except Exception:
+                    pass
+
+            # fallback: cloud scenario action
+            scenario_map = await q.ensure_speaker_scenarios(devices)
             sid = scenario_map.get(did)
             if not sid:
                 raise typer.BadParameter("device has no capabilities for cloud scenarios (module?)")
             await q.run_speaker_action(sid, did, text)
-            typer.echo(f"ok: {d.get('name')} ({did}) <= {text}")
+            typer.echo(f"ok(cloud): {name} ({did}) <= {text}")
 
     try:
         asyncio.run(run())
