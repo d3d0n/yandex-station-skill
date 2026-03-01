@@ -43,9 +43,18 @@ uv run yandex-station-skill list
 
 ```bash
 uv run yandex-station-skill pause "Kitchen"
-uv run yandex-station-skill volume "Kitchen" 35
+uv run yandex-station-skill volume "Kitchen" 25
 uv run yandex-station-skill next "Kitchen"
 uv run yandex-station-skill play "Kitchen" "my music"
+```
+
+### Volume safety cap
+
+Default max volume is stored in `~/.config/yandex-station-skill/config.json`.
+
+```bash
+uv run yandex-station-skill config show
+uv run yandex-station-skill config set-max-volume 70
 ```
 
 ## Notes

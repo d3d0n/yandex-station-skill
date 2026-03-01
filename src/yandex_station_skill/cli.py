@@ -7,14 +7,16 @@ from typing import Optional
 
 import typer
 
-from .config import paths
+from .config import AppConfig, load_config, paths, save_config
 from .passport_auth import PassportAuth, load_qr_state, qr_url, save_qr_state
 from .quasar import Quasar
 from .session import AuthError, YandexSession
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 auth_app = typer.Typer(add_completion=False, no_args_is_help=True)
+config_app = typer.Typer(add_completion=False, no_args_is_help=True)
 app.add_typer(auth_app, name="auth")
+app.add_typer(config_app, name="config")
 
 
 def _load_cookie(cookie: Optional[str]) -> str:
@@ -63,6 +65,27 @@ async def _with_quasar(cookie: str):
         yield q
     finally:
         await s.aclose()
+
+
+@config_app.command("show")
+def config_show():
+    """Show current config."""
+    cfg = load_config()
+    p = paths()
+    typer.echo(f"config: {p.config_file}")
+    typer.echo(f"max_volume: {cfg.max_volume}")
+
+
+@config_app.command("set-max-volume")
+def config_set_max_volume(level: int = typer.Argument(..., help="Default max volume for volume command")):
+    """Set default max volume cap (stored in config.json)."""
+    if level < 0 or level > 100:
+        raise typer.BadParameter("level must be 0..100")
+    cfg = load_config()
+    cfg.max_volume = level
+    path = save_config(cfg)
+    typer.echo(f"ok: max_volume={level}")
+    typer.echo(str(path))
 
 
 @app.command()
@@ -197,13 +220,20 @@ def volume(
     level: int,
     cookie: str = typer.Option(None),
     prefer_local: bool = typer.Option(True),
-    max_level: int = typer.Option(30, help="Safety cap; default 30"),
+    max_level: int | None = typer.Option(None, help="Safety cap override (default from config)") ,
 ):
-    """Set volume 0..100 (capped by max_level)."""
+    """Set volume 0..100 (capped by max_level, default from config.json)."""
     if level < 0 or level > 100:
         raise typer.BadParameter("level must be 0..100")
-    if level > max_level:
-        raise typer.BadParameter(f"level must be <= {max_level}")
+
+    cfg = load_config()
+    cap = cfg.max_volume if max_level is None else max_level
+    if cap < 0 or cap > 100:
+        cap = 70
+
+    if level > cap:
+        raise typer.BadParameter(f"level must be <= {cap}")
+
     _action(device, f"громкость на {level}", cookie, prefer_local=prefer_local)
 
 
